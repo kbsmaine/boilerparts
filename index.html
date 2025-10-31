@@ -240,8 +240,11 @@
     <p>© 2025 Greyson’s Used Boiler Parts & Surplus | Maine, USA • Serving the Northeast</p>
   </footer>
 
-  <script>window.PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID_HERE";</script>
-  <script src="js/cart.js"></script>
-  <script src="js/payments.js"></script>
+<!-- Load PayPal SDK FIRST -->
+<script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV"></script>
+
+<!-- Then load your scripts -->
+<script src="js/cart.js?v=modal"></script>
+<script src="js/payments.js?v=modal"></script>
 </body>
 </html>
