@@ -2,60 +2,74 @@
 console.log("💳 payments.js loaded");
 
 const PP = (window.paypal_sdk || window.paypal);
-const BUTTONS_TARGET = "#paypal-buttons";      // <div id="paypal-buttons"></div> lives INSIDE the modal content
-const CART_OPEN_EVENT = "cart:open";           // cart.js should dispatch this when the modal opens
-const CART_CLOSE_EVENT = "cart:close";         // cart.js should dispatch this when the modal closes
+const BUTTONS_TARGET = "#paypal-buttons";   // lives inside the cart modal
+const CART_OPEN_EVENT = "cart:open";        // cart.js should dispatch when modal opens
+const CART_CLOSE_EVENT = "cart:close";      // cart.js should dispatch when modal closes
 
 let ppButtons = null;
 
-/* Robust total getter:
-   - prefer a global from cart.js (window.getCartTotal)
-   - else fall back to localStorage 'cart' [{price, qty}]
-*/
-function getCartTotal() {
-  if (typeof window.getCartTotal === "function") {
-    return Number(window.getCartTotal() || 0);
-  }
+/* Safe cart total reader that avoids name collisions and supports several shapes */
+function readCartTotal() {
   try {
-    const raw = localStorage.getItem("cart");
-    if (!raw) return 0;
-    const items = JSON.parse(raw);
-    return items.reduce((sum, it) => sum + Number(it.price) * Number(it.qty || 1), 0);
-  } catch {
-    return 0;
-  }
+    // Prefer a cart API if present
+    if (window.Cart && typeof window.Cart.total === "function") {
+      return Number(window.Cart.total() || 0);
+    }
+    if (typeof window.cartTotal === "function") {
+      return Number(window.cartTotal() || 0);
+    }
+    // If a global getCartTotal exists and it's NOT this function, use it
+    if (typeof window.getCartTotal === "function" && window.getCartTotal !== readCartTotal) {
+      return Number(window.getCartTotal() || 0);
+    }
+    // Fallbacks: localStorage structures
+    const candidates = ["cart", "cartItems"];
+    for (const key of candidates) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        return data.reduce(
+          (sum, it) => sum + Number(it.price || 0) * Number(it.qty || it.quantity || 1),
+          0
+        );
+      }
+      if (data && typeof data.total === "number") return Number(data.total);
+    }
+  } catch (_) { /* ignore */ }
+  return 0;
 }
 
-/* Ensure a stable container exists inside the modal */
-function getButtonsContainer() {
+function buttonsContainer() {
   return document.querySelector(BUTTONS_TARGET);
 }
 
-/* Render buttons (idempotent) */
-function renderButtonsIfNeeded() {
-  const container = getButtonsContainer();
-  if (!PP || !container) return;
-
-  // If already rendered into this container, don't duplicate
-  if (ppButtons && container.contains(container.querySelector("iframe"))) {
+/* Render buttons (idempotent, retries briefly until the modal content exists) */
+function renderButtonsIfNeeded(attempt = 0) {
+  const container = buttonsContainer();
+  if (!PP) return;                         // SDK not loaded yet
+  if (!container) {
+    if (attempt < 10) setTimeout(() => renderButtonsIfNeeded(attempt + 1), 50);
     return;
   }
+
+  // Prevent duplicates
+  if (ppButtons && container.querySelector("iframe")) return;
 
   // Clean any previous instance
   if (ppButtons && ppButtons.close) {
     try { ppButtons.close(); } catch {}
     ppButtons = null;
   }
-  container.innerHTML = ""; // clear any stale markup
+  container.innerHTML = "";
 
   ppButtons = PP.Buttons({
     style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
 
-    createOrder: function (data, actions) {
-      const total = Number(getCartTotal().toFixed(2));
+    createOrder: (data, actions) => {
+      const total = Number(readCartTotal().toFixed(2));
       if (total <= 0) {
-        console.info("ℹ️ Cart total is 0. Buttons will render but cannot create order.");
-        // Prevent the SDK 422 by throwing and letting onError handle toast/UI
+        // Stop 422s cleanly
         throw new Error("Cart total is $0.00 — add items before checkout.");
       }
       return actions.order.create({
@@ -66,29 +80,27 @@ function renderButtonsIfNeeded() {
       });
     },
 
-    onApprove: function (data, actions) {
-      return actions.order.capture().then(function (details) {
+    onApprove: (data, actions) =>
+      actions.order.capture().then(details => {
         console.log("✅ Payment captured", details);
-        // You can clear the cart here via a function from cart.js if available:
         if (typeof window.clearCart === "function") window.clearCart();
         alert("Payment successful. Thank you!");
-      });
-    },
+      }),
 
-    onError: function (err) {
+    onError: (err) => {
       console.error("PayPal error:", err);
-      alert((err && err.message) ? err.message : "PayPal error. Please try again.");
+      alert(err?.message || "PayPal error. Please try again.");
     }
   });
 
-  ppButtons.render(container).then(()=>{
+  ppButtons.render(container).then(() => {
     console.log("✅ PayPal Buttons rendered");
   });
 }
 
-/* Destroy buttons when modal closes (prevents “container removed from DOM”) */
+/* Destroy buttons when the modal closes */
 function destroyButtons() {
-  const container = getButtonsContainer();
+  const container = buttonsContainer();
   if (ppButtons && ppButtons.close) {
     try { ppButtons.close(); } catch {}
     ppButtons = null;
@@ -96,17 +108,17 @@ function destroyButtons() {
   if (container) container.innerHTML = "";
 }
 
-/* Wire up to modal lifecycle */
-document.addEventListener(CART_OPEN_EVENT, renderButtonsIfNeeded);
+/* Hook into modal lifecycle */
+document.addEventListener(CART_OPEN_EVENT, () => renderButtonsIfNeeded());
 document.addEventListener(CART_CLOSE_EVENT, destroyButtons);
 
-/* Fallbacks: clicking the cart button should also render */
-document.getElementById("openCartBtn")?.addEventListener("click", ()=>{
-  // slight delay so the modal DOM exists
-  setTimeout(renderButtonsIfNeeded, 50);
+/* Also render after clicking the cart icon (in case cart.js doesn't dispatch) */
+document.getElementById("openCartBtn")?.addEventListener("click", () => {
+  setTimeout(() => renderButtonsIfNeeded(), 50);
 });
 
-/* If the modal is already open when the page loads, try once */
-window.addEventListener("load", ()=>{
-  setTimeout(renderButtonsIfNeeded, 150);
-});
+/* If the modal is already open at load for any reason, try once */
+window.addEventListener("load", () => setTimeout(() => renderButtonsIfNeeded(), 150));
+
+/* Optional: expose a manual trigger cart.js can call after it builds the modal DOM */
+window.paymentsRenderInModal = () => renderButtonsIfNeeded();
