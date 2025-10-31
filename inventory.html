@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,7 +7,28 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    /* Add-to-cart + cart pulse animations */
+    .btn.add.added {
+      background-color: #16a34a !important;
+      color: #fff !important;
+      transform: scale(1.05);
+      transition: all 0.3s ease;
+    }
+
+    #cartCount.pulse {
+      animation: pulseCart 0.4s;
+    }
+
+    @keyframes pulseCart {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.4); }
+      100% { transform: scale(1); }
+    }
+  </style>
 </head>
+
 <body>
   <header class="topbar">
     <div class="container nav">
@@ -27,64 +47,55 @@
       </button>
     </div>
   </header>
+
   <main class="content">
+    <section class="container">
+      <h1>Inventory</h1>
+      <p class="muted">
+        Real parts. Real condition notes. If you don’t see it, 
+        <a href="contact.html">reach out</a> — we’ll help you find it.
+      </p>
 
-<section class="container">
-  <h1>Inventory</h1>
-  <p class="muted">Real parts. Real condition notes. If you don’t see it, <a href="contact.html">reach out</a> — we’ll help you find it.</p>
+      <div class="filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="Burners">Burners</button>
+        <button class="chip" data-filter="Oil Tank Parts">Oil Tank Parts</button>
+        <button class="chip" data-filter="Boiler Components">Boiler Components</button>
+      </div>
 
-  <div class="filters">
-    <button class="chip active" data-filter="all">All</button>
-    <button class="chip" data-filter="Burners">Burners</button>
-    <button class="chip" data-filter="Oil Tank Parts">Oil Tank Parts</button>
-    <button class="chip" data-filter="Boiler Components">Boiler Components</button>
-  </div>
+      <div class="grid products" id="productGrid">
+        <div class="product card" data-category="Burners">
+          <h3>Riello Burner RDB2.2</h3>
+          <p class="muted">Pulled & cleaned. 90-day guarantee.</p>
+          <div class="price">$350.00</div>
+          <button class="btn add" data-id="rdb22" data-name="Riello Burner RDB2.2" data-price="350.00">Add to Cart</button>
+        </div>
 
-  <div class="grid products" id="productGrid">
-    <!-- Example items (replace with your data/images later) -->
-    <div class="product card" data-category="Burners">
-      <h3>Riello Burner RDB2.2</h3>
-      <p class="muted">Pulled & cleaned. 90-day guarantee.</p>
-      <div class="price">$350.00</div>
-      <button class="btn add" data-id="rdb22" data-name="Riello Burner RDB2.2" data-price="350.00">Add to Cart</button>
-    </div>
+        <div class="product card" data-category="Oil Tank Parts">
+          <h3>Suntec Pump A2VA7116</h3>
+          <p class="muted">Used. Tested — no leaks.</p>
+          <div class="price">$95.00</div>
+          <button class="btn add" data-id="a2va7116" data-name="Suntec Pump A2VA7116" data-price="95.00">Add to Cart</button>
+        </div>
 
-    <div class="product card" data-category="Oil Tank Parts" id="Oil Tank Parts">
-      <h3>Suntec Pump A2VA7116</h3>
-      <p class="muted">Used. Tested — no leaks.</p>
-      <div class="price">$95.00</div>
-      <button class="btn add" data-id="a2va7116" data-name="Suntec Pump A2VA7116" data-price="95.00">Add to Cart</button>
-    </div>
+        <div class="product card" data-category="Boiler Components">
+          <h3>Honeywell Aquastat L8148E</h3>
+          <p class="muted">Cleaned contacts, includes cover.</p>
+          <div class="price">$120.00</div>
+          <button class="btn add" data-id="l8148e" data-name="Honeywell Aquastat L8148E" data-price="120.00">Add to Cart</button>
+        </div>
 
-    <div class="product card" data-category="Boiler Components" id="Boiler Components">
-      <h3>Honeywell Aquastat L8148E</h3>
-      <p class="muted">Cleaned contacts, includes cover.</p>
-      <div class="price">$120.00</div>
-      <button class="btn add" data-id="l8148e" data-name="Honeywell Aquastat L8148E" data-price="120.00">Add to Cart</button>
-    </div>
+        <div class="product card" data-category="Burners">
+          <h3>Beckett Burner AFG</h3>
+          <p class="muted">Rebuilt — new nozzle & electrodes.</p>
+          <div class="price">$275.00</div>
+          <button class="btn add" data-id="afg" data-name="Beckett Burner AFG" data-price="275.00">Add to Cart</button>
+        </div>
+      </div>
+    </section>
 
-    <div class="product card" data-category="Burners" id="Burners">
-      <h3>Beckett Burner AFG</h3>
-      <p class="muted">Rebuilt — new nozzle & electrodes.</p>
-      <div class="price">$275.00</div>
-      <button class="btn add" data-id="afg" data-name="Beckett Burner AFG" data-price="275.00">Add to Cart</button>
-    </div>
-  </div>
-</section>
-<script>
-  // Simple client-side filter
-  document.querySelectorAll('.chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const f = btn.dataset.filter;
-      document.querySelectorAll('.product').forEach(p => {
-        p.style.display = (f==='all' || p.dataset.category===f) ? '' : 'none';
-      });
-    });
-  });
-</script>
-
+    <!-- PayPal checkout container -->
+    <div id="paypal-container" style="max-width:400px; margin:40px auto;"></div>
   </main>
 
   <footer class="footer">
@@ -93,8 +104,30 @@
     </div>
   </footer>
 
-  <script>window.PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID_HERE";</script>
-  <script src="js/cart.js"></script>
-  <script src="js/payments.js"></script>
+  <!-- ✅ Load PayPal SDK FIRST -->
+  <script
+    src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons&currency=USD"
+    data-namespace="paypal_sdk"
+    onload="console.log('✅ PayPal SDK loaded on inventory page');"
+    onerror="console.error('❌ Failed to load PayPal SDK on inventory page');">
+  </script>
+
+  <!-- ✅ Then your scripts -->
+  <script src="js/cart.js?v=modal"></script>
+  <script src="js/payments.js?v=modal"></script>
+
+  <script>
+    // Category filter logic
+    document.querySelectorAll('.chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const f = btn.dataset.filter;
+        document.querySelectorAll('.product').forEach(p => {
+          p.style.display = (f === 'all' || p.dataset.category === f) ? '' : 'none';
+        });
+      });
+    });
+  </script>
 </body>
 </html>
