@@ -1,110 +1,112 @@
-// js/payments.js  — bullet-proof PayPal init for every page/modal
+/* payments.js — render PayPal ONLY inside the cart modal */
 console.log("💳 payments.js loaded");
 
-(function () {
-  const CLIENT_ID = "AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV";
-  const SDK_QS =
-    `https://www.paypal.com/sdk/js?client-id=${CLIENT_ID}&components=buttons,funding-eligibility&enable-funding=card,paylater&currency=USD`;
+const PP = (window.paypal_sdk || window.paypal);
+const BUTTONS_TARGET = "#paypal-buttons";      // <div id="paypal-buttons"></div> lives INSIDE the modal content
+const CART_OPEN_EVENT = "cart:open";           // cart.js should dispatch this when the modal opens
+const CART_CLOSE_EVENT = "cart:close";         // cart.js should dispatch this when the modal closes
 
-  // ---- utilities -----------------------------------------------------------
-  function getSDK() {
-    // Support both default and custom namespace
-    return (window.paypal && window.paypal.Buttons ? window.paypal :
-           (window.paypal_sdk && window.paypal_sdk.Buttons ? window.paypal_sdk : null));
+let ppButtons = null;
+
+/* Robust total getter:
+   - prefer a global from cart.js (window.getCartTotal)
+   - else fall back to localStorage 'cart' [{price, qty}]
+*/
+function getCartTotal() {
+  if (typeof window.getCartTotal === "function") {
+    return Number(window.getCartTotal() || 0);
+  }
+  try {
+    const raw = localStorage.getItem("cart");
+    if (!raw) return 0;
+    const items = JSON.parse(raw);
+    return items.reduce((sum, it) => sum + Number(it.price) * Number(it.qty || 1), 0);
+  } catch {
+    return 0;
+  }
+}
+
+/* Ensure a stable container exists inside the modal */
+function getButtonsContainer() {
+  return document.querySelector(BUTTONS_TARGET);
+}
+
+/* Render buttons (idempotent) */
+function renderButtonsIfNeeded() {
+  const container = getButtonsContainer();
+  if (!PP || !container) return;
+
+  // If already rendered into this container, don't duplicate
+  if (ppButtons && container.contains(container.querySelector("iframe"))) {
+    return;
   }
 
-  function findSDKTag() {
-    const tags = Array.from(document.querySelectorAll('script[src*="paypal.com/sdk/js"]'));
-    return tags.length ? tags[0] : null;
+  // Clean any previous instance
+  if (ppButtons && ppButtons.close) {
+    try { ppButtons.close(); } catch {}
+    ppButtons = null;
   }
+  container.innerHTML = ""; // clear any stale markup
 
-  function ensureSDKReady(cb, tries = 0) {
-    const sdk = getSDK();
-    if (sdk) return cb(sdk);
-    if (tries > 40) { // ~12s max
-      console.error("❌ PayPal SDK never became ready.");
-      return;
-    }
-    setTimeout(() => ensureSDKReady(cb, tries + 1), 300);
-  }
+  ppButtons = PP.Buttons({
+    style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
 
-  function injectSDKIfMissing() {
-    if (getSDK()) return;                 // already present
-    if (findSDKTag()) return;             // tag exists; let onload path handle timing
-    const s = document.createElement("script");
-    s.src = SDK_QS;
-    s.onload = () => console.log("✅ PayPal SDK injected & loaded");
-    s.onerror = () => console.error("❌ Failed to inject PayPal SDK");
-    document.body.appendChild(s);
-  }
+    createOrder: function (data, actions) {
+      const total = Number(getCartTotal().toFixed(2));
+      if (total <= 0) {
+        console.info("ℹ️ Cart total is 0. Buttons will render but cannot create order.");
+        // Prevent the SDK 422 by throwing and letting onError handle toast/UI
+        throw new Error("Cart total is $0.00 — add items before checkout.");
+      }
+      return actions.order.create({
+        purchase_units: [{
+          amount: { value: total.toFixed(2), currency_code: "USD" },
+          description: "Greyson’s Used Boiler Parts & Surplus"
+        }]
+      });
+    },
 
-  // ---- rendering -----------------------------------------------------------
-  function getCartTotalSafe() {
-    try {
-      return typeof getCartTotal === "function" ? Number(getCartTotal()) || 0 : 0;
-    } catch { return 0; }
-  }
+    onApprove: function (data, actions) {
+      return actions.order.capture().then(function (details) {
+        console.log("✅ Payment captured", details);
+        // You can clear the cart here via a function from cart.js if available:
+        if (typeof window.clearCart === "function") window.clearCart();
+        alert("Payment successful. Thank you!");
+      });
+    },
 
-  function renderButtons(sdk) {
-    const mount = document.getElementById("paypal-container");
-    if (!mount) {
-      // Some pages might not have the container; that’s fine.
-      return;
-    }
-    // Clear previous render if reopening modal
-    mount.innerHTML = "";
-
-    try {
-      sdk.Buttons({
-        style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal" },
-        createOrder: (data, actions) => {
-          const total = getCartTotalSafe().toFixed(2);
-          if (total === "0.00") {
-            console.warn("ℹ️ Cart total is 0. Buttons will render but cannot create order.");
-          }
-          return actions.order.create({
-            purchase_units: [{ amount: { value: total } }]
-          });
-        },
-        onApprove: (data, actions) => {
-          return actions.order.capture().then((details) => {
-            alert(`Transaction completed by ${details.payer.name.given_name}!`);
-            if (typeof clearCart === "function") clearCart();
-          });
-        },
-        onError: (err) => console.error("PayPal error:", err)
-      }).render(mount);
-      console.log("✅ PayPal Buttons rendered");
-    } catch (e) {
-      console.error("❌ Failed to render PayPal Buttons:", e);
-    }
-  }
-
-  // ---- wire-up: run on load, and every time the cart opens -----------------
-  function initPayPalFlow() {
-    // Make sure SDK script exists; if not, add it.
-    injectSDKIfMissing();
-
-    // Wait until SDK is actually ready, then render
-    ensureSDKReady(renderButtons);
-  }
-
-  // Run after DOM is ready
-  document.addEventListener("DOMContentLoaded", initPayPalFlow);
-
-  // Re-render whenever the cart modal is opened (cart.js should open modal on this button)
-  document.addEventListener("click", (e) => {
-    const openBtn = e.target.closest("#openCartBtn");
-    if (openBtn) {
-      // Give the modal a tick to mount DOM, then render/refresh buttons
-      setTimeout(() => ensureSDKReady(renderButtons), 150);
+    onError: function (err) {
+      console.error("PayPal error:", err);
+      alert((err && err.message) ? err.message : "PayPal error. Please try again.");
     }
   });
 
-  // Optional: if your cart.js dispatches a custom event after updating totals,
-  // we’ll refresh buttons so PayPal amount is correct.
-  document.addEventListener("cart:updated", () => {
-    const sdk = getSDK();
-    if (sdk) renderButtons(sdk);
+  ppButtons.render(container).then(()=>{
+    console.log("✅ PayPal Buttons rendered");
   });
-})();
+}
+
+/* Destroy buttons when modal closes (prevents “container removed from DOM”) */
+function destroyButtons() {
+  const container = getButtonsContainer();
+  if (ppButtons && ppButtons.close) {
+    try { ppButtons.close(); } catch {}
+    ppButtons = null;
+  }
+  if (container) container.innerHTML = "";
+}
+
+/* Wire up to modal lifecycle */
+document.addEventListener(CART_OPEN_EVENT, renderButtonsIfNeeded);
+document.addEventListener(CART_CLOSE_EVENT, destroyButtons);
+
+/* Fallbacks: clicking the cart button should also render */
+document.getElementById("openCartBtn")?.addEventListener("click", ()=>{
+  // slight delay so the modal DOM exists
+  setTimeout(renderButtonsIfNeeded, 50);
+});
+
+/* If the modal is already open when the page loads, try once */
+window.addEventListener("load", ()=>{
+  setTimeout(renderButtonsIfNeeded, 150);
+});
