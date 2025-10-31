@@ -1,108 +1,157 @@
-// js/payments.js
-console.log("💳 payments.js loaded");
+/* ===== PayPal Buttons (FULL) =====
+   Renders inside #paypal-mount ONLY when the cart modal is visible.
+   - De-dupes multiple renders
+   - Prevents zero-total orders
+   - Works on both index.html and inventory.html
+   Requires PayPal SDK loaded with data-namespace="paypal_sdk"
+*/
 
 (function () {
-  if (window.__paymentsBound) return;   // prevent double listeners
-  window.__paymentsBound = true;
+  console.log("💳 payments.js loaded");
 
-  const NS = window.paypal_sdk || window.paypal; // namespace from SDK
-  const BTN_CONTAINER_ID = "paypal-buttons";
-  const UNAVAILABLE_ID = "paypalUnavailable";
+  const MOUNT_ID = "paypal-mount";
+  const MODAL_ID = "cartModal";
 
-  let renderNonce = 0;
+  // Guard flags to avoid duplicates
+  let renderedOnce = false;
+  let lastRenderAt = 0;
 
-  function getCartTotal() {
+  // Simple helpers
+  function modalOpen() {
+    const modal = document.getElementById(MODAL_ID);
+    return !!(modal && modal.style.display === "flex");
+  }
+  function mountEl() {
+    return document.getElementById(MOUNT_ID);
+  }
+  function getCart() {
     try {
-      return typeof window.Cart?.total === "function" ? Number(window.Cart.total() || 0) : 0;
-    } catch {
-      return 0;
+      return JSON.parse(localStorage.getItem("cart")) || [];
+    } catch (_) {
+      return [];
     }
   }
-
-  function setUnavailable(show) {
-    const el = document.getElementById(UNAVAILABLE_ID);
-    if (el) el.style.display = show ? "block" : "none";
+  function getCartTotal() {
+    const items = getCart();
+    return items.reduce((sum, it) => sum + (Number(it.price) * Number(it.qty || 1)), 0);
   }
 
-  async function renderButtons(totalOverride) {
-    const total = typeof totalOverride === "number" ? totalOverride : getCartTotal();
-    const container = document.getElementById(BTN_CONTAINER_ID);
-    if (!container) return;
+  // Clean any previous render
+  function clearMount() {
+    const m = mountEl();
+    if (m) m.innerHTML = "";
+  }
 
-    // cancel any in-flight renders
-    const myNonce = ++renderNonce;
+  // Create individual containers so PayPal can render its three buttons
+  function ensureButtonContainers() {
+    const m = mountEl();
+    if (!m) return null;
 
-    // fresh container each time
-    container.innerHTML = "";
+    // Fresh containers on each render attempt
+    m.innerHTML = `
+      <div id="pp-btn-paypal"></div>
+      <div id="pp-btn-later" style="margin-top:10px;"></div>
+      <div id="pp-btn-card"  style="margin-top:10px;"></div>
+    `;
+    return {
+      paypal: document.getElementById("pp-btn-paypal"),
+      later:  document.getElementById("pp-btn-later"),
+      card:   document.getElementById("pp-btn-card"),
+    };
+  }
 
-    // no buttons if empty cart
-    if (total <= 0) {
-      setUnavailable(true);
+  function renderButtons() {
+    // Debounce: don’t render more than once within 150ms
+    const now = Date.now();
+    if (now - lastRenderAt < 150) return;
+    lastRenderAt = now;
+
+    // Must be inside visible modal
+    if (!modalOpen()) return;
+
+    const total = Number(getCartTotal().toFixed(2));
+    const m = mountEl();
+    if (!m) return;
+
+    // Always reset containers before trying to render
+    const containers = ensureButtonContainers();
+    if (!containers) return;
+
+    // If no SDK yet, try again shortly
+    if (!window.paypal_sdk || !window.paypal_sdk.Buttons) {
+      setTimeout(renderButtons, 120);
       return;
     }
-    setUnavailable(false);
 
-    // wait for SDK
-    const paypalNs = await waitForSdk();
-    if (myNonce !== renderNonce) return; // a newer render started
+    // If total <= 0, show disabled state (no order creation)
+    if (total <= 0) {
+      clearMount();
+      const d = document.createElement("div");
+      d.style.cssText = "text-align:center; opacity:.9; font-weight:700;";
+      d.textContent = "PayPal unavailable";
+      m.appendChild(d);
+      renderedOnce = true;
+      return;
+    }
 
-    paypalNs.Buttons({
-      style: { layout: "vertical", color: "gold", label: "paypal", shape: "rect" },
-
+    // Shared button config
+    const cfg = {
+      style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal", tagline: false },
       createOrder: function (data, actions) {
-        const currentTotal = getCartTotal();
-        if (currentTotal <= 0) {
-          setUnavailable(true);
-          throw new Error("Cart total is zero.");
-        }
+        // Build a very basic order with one line item = cart total
         return actions.order.create({
           purchase_units: [{
             amount: {
-              currency_code: "USD",
-              value: currentTotal.toFixed(2)
-            }
+              value: total.toFixed(2),
+              currency_code: "USD"
+            },
+            description: "Greyson’s Used Boiler Parts & Surplus – Web Order"
           }]
         });
       },
-
       onApprove: function (data, actions) {
         return actions.order.capture().then(function (details) {
-          alert(`Thanks ${details.payer.name.given_name}! Order ${details.id} completed.`);
-          // TODO: clear cart here if you want
+          alert("Payment completed by " + (details.payer?.name?.given_name || "customer") + " 👌");
+          // Clear cart on success
+          localStorage.setItem("cart", "[]");
+          // Ask cart.js to refresh itself
+          document.dispatchEvent(new CustomEvent("cart:update", { detail: { total: 0 } }));
         });
       },
-
       onError: function (err) {
         console.error("PayPal error:", err);
         alert("PayPal error. Please try again.");
       }
-    }).render(`#${BTN_CONTAINER_ID}`).then(() => {
-      if (myNonce !== renderNonce) {
-        // another render replaced us — remove our DOM just in case
-        container.innerHTML = "";
-        return;
-      }
+    };
+
+    // Render three funding sources in separate mounts
+    try {
+      window.paypal_sdk.Buttons({ ...cfg, fundingSource: window.paypal_sdk.FUNDING.PAYPAL }).render("#pp-btn-paypal");
+      window.paypal_sdk.Buttons({ ...cfg, fundingSource: window.paypal_sdk.FUNDING.PAYLATER }).render("#pp-btn-later");
+      window.paypal_sdk.Buttons({ ...cfg, fundingSource: window.paypal_sdk.FUNDING.CARD }).render("#pp-btn-card");
+      renderedOnce = true;
       console.log("✅ PayPal Buttons rendered");
-    });
+    } catch (e) {
+      console.error("Failed to render PayPal buttons:", e);
+      clearMount();
+      const d = document.createElement("div");
+      d.style.cssText = "text-align:center; opacity:.9; font-weight:700;";
+      d.textContent = "PayPal unavailable";
+      m.appendChild(d);
+    }
   }
 
-  function waitForSdk() {
-    return new Promise((resolve) => {
-      if (window.paypal_sdk || window.paypal) return resolve(window.paypal_sdk || window.paypal);
-      const iv = setInterval(() => {
-        if (window.paypal_sdk || window.paypal) {
-          clearInterval(iv);
-          resolve(window.paypal_sdk || window.paypal);
-        }
-      }, 50);
-    });
-  }
+  // Listen for cart lifecycle
+  document.addEventListener("cart:open", () => {
+    renderedOnce = false; // allow a fresh render when opening
+    clearMount();
+    renderButtons();
+  });
+  document.addEventListener("cart:update", () => {
+    // Re-render only if already rendered once AND modal still open
+    if (modalOpen()) renderButtons();
+  });
 
-  // React to cart lifecycle
-  document.addEventListener("cart:open", () => renderButtons());
-  document.addEventListener("cart:update", (e) => renderButtons(e?.detail?.total));
-
-  // If the page starts with an already-open modal for some reason, try once.
-  // (No-op if container isn't in DOM yet.)
-  renderButtons();
+  // If someone loads the page with modal already open (rare), try once
+  if (modalOpen()) renderButtons();
 })();
