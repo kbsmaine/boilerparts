@@ -104,12 +104,15 @@
     </div>
   </footer>
 
-  <!-- ✅ Load PayPal SDK FIRST -->
-  <script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons,funding-eligibility&enable-funding=card,paylater&currency=USD" data-namespace="paypal_sdk" onload="console.log('✅ PayPal SDK loaded on inventory page');" onerror="console.error('❌ Failed to load PayPal SDK on inventory page');"></script>
+   <!-- ✅ Load PayPal SDK FIRST (no custom namespace) -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons,funding-eligibility&enable-funding=card,paylater&currency=USD"></script>
 
   <!-- ✅ Then your scripts -->
   <script src="js/cart.js?v=modal"></script>
   <script src="js/payments.js?v=modal"></script>
+</body>
+</html>
+
 
   <script>
     // Category filter logic
