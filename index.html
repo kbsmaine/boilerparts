@@ -138,6 +138,23 @@
       color: var(--muted);
       text-align: center;
     }
+    <style>
+.btn.add.added {
+  background-color: #16a34a !important; /* green flash */
+  color: #fff !important;
+  transform: scale(1.05);
+  transition: all 0.3s ease;
+}
+
+#cartCount.pulse {
+  animation: pulseCart 0.4s;
+}
+
+@keyframes pulseCart {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
   </style>
 </head>
 
