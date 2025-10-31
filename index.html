@@ -1,13 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Greyson's Used Boiler Parts and Surplus</title>
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Greyson’s Used Boiler Parts & Surplus</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 
   <style>
-    /* Add-to-cart & cart pulse animations */
+    :root {
+      --bg: #0f172a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --blue: #4f86c6;
+      --accent: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+    header.topbar {
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid #1f2937;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav {
+      display: flex; justify-content: space-between; align-items: center;
+      height: 64px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 900; letter-spacing: .5px; }
+    .brand img { height: 36px; border-radius: 6px; }
+    .brand .tagline { display: block; font-size: 11px; color: #9aa8bb; letter-spacing: .8px; }
+    nav.menu a { color: var(--text); text-decoration: none; margin: 0 10px; font-weight: 600; }
+    nav.menu a:hover { color: var(--accent); }
+    .cart-button {
+      background: #0b1222; color: var(--text);
+      border: 1px solid #243047;
+      border-radius: 8px; padding: 6px 10px;
+      cursor: pointer;
+    }
+    .cart-count { background: var(--accent); color: #111; padding: 2px 6px; border-radius: 999px; font-weight: 800; margin-left: 4px; }
+
+    /* Hero Section */
+    .hero-dark {
+      background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,.85)),
+                  url('images/warehouse.jpg');
+      background-size: cover;
+      background-position: center;
+      padding: 110px 0 90px;
+      border-bottom: 1px solid #1f2937;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 52px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+    .hero p { color: var(--muted); font-size: 18px; margin-bottom: 24px; }
+    .cta .btn {
+      display: inline-block;
+      padding: 12px 22px;
+      border: 1px solid #2b3b55;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin: 0 8px;
+      color: var(--text);
+    }
+    .cta .btn.primary { background: var(--blue); border-color: #3b6ea0; }
+    .cta .btn:hover { filter: brightness(1.07); }
+
+    /* Cards */
+    .cards { padding: 40px 0 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .card {
+      background: #1f2937;
+      border: 1px solid #263242;
+      border-radius: 16px;
+      overflow: hidden;
+      color: var(--text);
+      text-decoration: none;
+      box-shadow: 0 10px 18px rgba(0,0,0,.25);
+    }
+    .card img { width: 100%; height: 180px; object-fit: cover; filter: brightness(.85); }
+    .card .inner { padding: 18px; }
+    .card h3 { text-transform: uppercase; margin: 0 0 8px; font-size: 18px; }
+    .card p { color: var(--muted); margin: 0 0 12px; }
+    .linkish { color: var(--blue); text-transform: uppercase; font-weight: 800; letter-spacing: .5px; }
+
+    /* Band */
+    .band {
+      background: #0b1222;
+      border-top: 1px solid #1f2937;
+      border-bottom: 1px solid #1f2937;
+      padding: 44px 0;
+      text-align: center;
+    }
+    .band h2 {
+      text-transform: uppercase;
+      font-size: 28px;
+      letter-spacing: .6px;
+      margin-bottom: 10px;
+    }
+    .band p {
+      color: var(--muted);
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* CTA Bottom */
+    .cta-bottom {
+      text-align: center;
+      padding: 36px 0;
+    }
+    .cta-bottom h2 {
+      font-size: 28px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 8px;
+    }
+
+    footer.footer {
+      border-top: 1px solid #1f2937;
+      padding: 26px 0;
+      background: #0b1222;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Cart Animations */
     .btn.add.added {
       background-color: #16a34a !important;
       color: #fff !important;
@@ -26,60 +158,85 @@
 </head>
 
 <body>
-  <!-- HEADER -->
-  <header>
-    <div class="container header-content">
-      <h1>Greyson's Used Boiler Parts and Surplus</h1>
-      <button id="openCartBtn" class="cart-btn">🛒 Cart (<span id="cartCount">0</span>)</button>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <img src="images/logo.png" alt="Greyson’s Logo">
+        <span>GREYSON’S</span>
+        <small class="tagline">USED BOILER PARTS & SURPLUS</small>
+      </a>
+      <nav class="menu">
+        <a href="index.html">Home</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="about.html">About Us</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <button class="cart-button" id="openCartBtn">🛒 <span id="cartCount" class="cart-count">0</span></button>
     </div>
   </header>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="hero-content">
-      <h2>USED BOILER & HVAC PARTS THAT STILL WORK HARD.</h2>
-      <p>Pulled, cleaned, and tested — ready to ship anywhere in the North.</p>
-      <a href="inventory.html" class="btn">View Parts</a>
-    </div>
-  </section>
-
-  <!-- FEATURED SECTION -->
-  <section class="featured">
-    <div class="container">
-      <h2>Shop Categories</h2>
-      <div class="categories">
-        <div class="category-card">
-          <img src="images/burner.jpg" alt="Burners">
-          <h3>Burners</h3>
-          <button class="btn add" data-id="burner1" data-name="Burner Assembly" data-price="120.00">Add to Cart</button>
-        </div>
-        <div class="category-card">
-          <img src="images/oil-tank.jpg" alt="Oil Tank Parts">
-          <h3>Oil Tank Parts</h3>
-          <button class="btn add" data-id="oil1" data-name="Oil Tank Valve" data-price="45.00">Add to Cart</button>
-        </div>
-        <div class="category-card">
-          <img src="images/boiler-parts.jpg" alt="Boiler Parts">
-          <h3>Boiler Parts</h3>
-          <button class="btn add" data-id="boiler1" data-name="Boiler Igniter" data-price="65.00">Add to Cart</button>
+  <main>
+    <section class="hero hero-dark">
+      <div class="container hero-inner">
+        <h1>USED BOILER & HVAC PARTS<br>THAT STILL WORK HARD.</h1>
+        <p>Pulled, cleaned, and tested — ready to ship anywhere in the North.</p>
+        <div class="cta">
+          <a class="btn primary" href="inventory.html">VIEW INVENTORY</a>
+          <a class="btn" href="contact.html">CONTACT US</a>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="container">
-      <p>&copy; 2025 Greyson's Used Boiler Parts & Surplus — All Rights Reserved.</p>
-    </div>
+    <section class="cards container">
+      <div class="grid">
+        <a class="card" href="inventory.html#Burners">
+          <img src="images/warehouse.jpg" alt="Burners">
+          <div class="inner">
+            <h3>Burners</h3>
+            <p>Tested, rebuilt, and ready to fire.</p>
+            <span class="linkish">VIEW PARTS →</span>
+          </div>
+        </a>
+        <a class="card" href="inventory.html#Oil%20Tank%20Parts">
+          <img src="images/warehouse.jpg" alt="Oil Tank & Pump Parts">
+          <div class="inner">
+            <h3>Oil Tank & Pump Parts</h3>
+            <p>Used, inspected, and guaranteed.</p>
+            <span class="linkish">VIEW PARTS →</span>
+          </div>
+        </a>
+        <a class="card" href="inventory.html#Boiler%20Components">
+          <img src="images/warehouse.jpg" alt="Boiler Components">
+          <div class="inner">
+            <h3>Boiler Components</h3>
+            <p>For when new parts cost too damn much.</p>
+            <span class="linkish">VIEW PARTS →</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="container">
+        <h2>Family-Owned. Field-Built.</h2>
+        <p>Greyson’s started with one goal: keep old systems running without breaking the bank. Every part we sell has been pulled, cleaned, and checked by hand in our Maine warehouse. We deal in boilers, burners, pumps, motors, and everything in between.</p>
+      </div>
+    </section>
+
+    <section class="cta-bottom">
+      <div class="container">
+        <h2>Need Something Specific?</h2>
+        <p>Call us at <a href="tel:+12076320809">(207) 632-0809</a> or email <a href="mailto:sales@greysonsupply.com">sales@greysonsupply.com</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 Greyson’s Used Boiler Parts & Surplus | Maine, USA • Serving the Northeast</p>
   </footer>
 
-  <!-- ✅ FIXED LOAD ORDER BELOW -->
-  <script
-    src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons&currency=USD"
-    data-sdk-integration-source="button-factory">
-  </script>
-
+  <!-- ✅ Correct Script Order -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons&currency=USD"></script>
   <script src="js/cart.js?v=modal"></script>
   <script src="js/payments.js?v=modal"></script>
 </body>
