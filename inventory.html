@@ -7,28 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css" />
-
   <style>
-    /* Add-to-cart + cart pulse animations */
-    .btn.add.added {
-      background-color: #16a34a !important;
-      color: #fff !important;
-      transform: scale(1.05);
-      transition: all 0.3s ease;
-    }
-
-    #cartCount.pulse {
-      animation: pulseCart 0.4s;
-    }
-
-    @keyframes pulseCart {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.4); }
-      100% { transform: scale(1); }
-    }
+    .btn.add.added{background:#16a34a!important;color:#fff!important;transform:scale(1.05);transition:.3s}
+    #cartCount.pulse{animation:pulseCart .4s}@keyframes pulseCart{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(1)}}
   </style>
 </head>
-
 <body>
   <header class="topbar">
     <div class="container nav">
@@ -38,7 +21,7 @@
       </a>
       <nav class="menu">
         <a href="index.html">Home</a>
-        <a href="inventory.html">Inventory</a>
+        <a href="inventory.html" aria-current="page">Inventory</a>
         <a href="about.html">About</a>
         <a href="contact.html">Contact</a>
       </nav>
@@ -51,10 +34,7 @@
   <main class="content">
     <section class="container">
       <h1>Inventory</h1>
-      <p class="muted">
-        Real parts. Real condition notes. If you don’t see it, 
-        <a href="contact.html">reach out</a> — we’ll help you find it.
-      </p>
+      <p class="muted">Real parts. Real condition notes. If you don’t see it, <a href="contact.html">reach out</a> — we’ll help you find it.</p>
 
       <div class="filters">
         <button class="chip active" data-filter="all">All</button>
@@ -93,9 +73,6 @@
         </div>
       </div>
     </section>
-
-    <!-- PayPal checkout container -->
-    <div id="paypal-container" style="max-width:400px; margin:40px auto;"></div>
   </main>
 
   <footer class="footer">
@@ -104,25 +81,22 @@
     </div>
   </footer>
 
-   <!-- ✅ Load PayPal SDK FIRST (no custom namespace) -->
-  <script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons,funding-eligibility&enable-funding=card,paylater&currency=USD"></script>
+  <!-- PayPal SDK (one time, shared) -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AR1KqgMjoynz7pTqK0twhdeGadhGvtmbNXOhbGeqxil-d_tblaF-xCtrY_1UXmmECd3FDKE6sv6woYQV&components=buttons,funding-eligibility&enable-funding=card,paylater&currency=USD" data-namespace="paypal_sdk"></script>
 
-  <!-- ✅ Then your scripts -->
-  <script src="js/cart.js?v=modal"></script>
-  <script src="js/payments.js?v=modal"></script>
-</body>
-</html>
-
+  <!-- Site scripts -->
+  <script src="js/cart.js"></script>
+  <script src="js/payments.js"></script>
 
   <script>
-    // Category filter logic
-    document.querySelectorAll('.chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+    // Simple client-side filter
+    document.querySelectorAll('.chip').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
         btn.classList.add('active');
-        const f = btn.dataset.filter;
-        document.querySelectorAll('.product').forEach(p => {
-          p.style.display = (f === 'all' || p.dataset.category === f) ? '' : 'none';
+        const f=btn.dataset.filter;
+        document.querySelectorAll('.product').forEach(p=>{
+          p.style.display=(f==='all'||p.dataset.category===f)?'':'none';
         });
       });
     });
