@@ -1,0 +1,100 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Greyson’s Used Boiler Parts & Surplus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html">
+        <img src="images/logo.png" alt="Greyson’s Logo" class="logo">
+        <span>Greyson’s Used Boiler Parts & Surplus</span>
+      </a>
+      <nav class="menu">
+        <a href="index.html">Home</a>
+        <a href="inventory.html">Inventory</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <button class="cart-button" id="openCartBtn" aria-label="Open cart">
+        🛒 <span id="cartCount" class="cart-count">0</span>
+      </button>
+    </div>
+  </header>
+  <main class="content">
+
+<section class="container">
+  <h1>Inventory</h1>
+  <p class="muted">Real parts. Real condition notes. If you don’t see it, <a href="contact.html">reach out</a> — we’ll help you find it.</p>
+
+  <div class="filters">
+    <button class="chip active" data-filter="all">All</button>
+    <button class="chip" data-filter="Burners">Burners</button>
+    <button class="chip" data-filter="Oil Tank Parts">Oil Tank Parts</button>
+    <button class="chip" data-filter="Boiler Components">Boiler Components</button>
+  </div>
+
+  <div class="grid products" id="productGrid">
+    <!-- Example items (replace with your data/images later) -->
+    <div class="product card" data-category="Burners">
+      <h3>Riello Burner RDB2.2</h3>
+      <p class="muted">Pulled & cleaned. 90-day guarantee.</p>
+      <div class="price">$350.00</div>
+      <button class="btn add" data-id="rdb22" data-name="Riello Burner RDB2.2" data-price="350.00">Add to Cart</button>
+    </div>
+
+    <div class="product card" data-category="Oil Tank Parts" id="Oil Tank Parts">
+      <h3>Suntec Pump A2VA7116</h3>
+      <p class="muted">Used. Tested — no leaks.</p>
+      <div class="price">$95.00</div>
+      <button class="btn add" data-id="a2va7116" data-name="Suntec Pump A2VA7116" data-price="95.00">Add to Cart</button>
+    </div>
+
+    <div class="product card" data-category="Boiler Components" id="Boiler Components">
+      <h3>Honeywell Aquastat L8148E</h3>
+      <p class="muted">Cleaned contacts, includes cover.</p>
+      <div class="price">$120.00</div>
+      <button class="btn add" data-id="l8148e" data-name="Honeywell Aquastat L8148E" data-price="120.00">Add to Cart</button>
+    </div>
+
+    <div class="product card" data-category="Burners" id="Burners">
+      <h3>Beckett Burner AFG</h3>
+      <p class="muted">Rebuilt — new nozzle & electrodes.</p>
+      <div class="price">$275.00</div>
+      <button class="btn add" data-id="afg" data-name="Beckett Burner AFG" data-price="275.00">Add to Cart</button>
+    </div>
+  </div>
+</section>
+<script>
+  // Simple client-side filter
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      document.querySelectorAll('.product').forEach(p => {
+        p.style.display = (f==='all' || p.dataset.category===f) ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© 2025 Greyson’s Used Boiler Parts & Surplus — Maine, USA • Serving the Northeast</p>
+    </div>
+  </footer>
+
+  <script>window.PAYPAL_CLIENT_ID = "YOUR_PAYPAL_CLIENT_ID_HERE";</script>
+  <script src="js/cart.js"></script>
+  <script src="js/payments.js"></script>
+</body>
+</html>
