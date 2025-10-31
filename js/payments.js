@@ -1,34 +1,37 @@
-/* ===== PayPal Buttons (modal-only) =====
-   - Renders into #paypal-mount when cart modal is open
-   - PAYPAL + PAYLATER use gold; CARD must use black
-   - Safe against duplicate renders & partial failures
-   - Requires SDK tag loaded with data-namespace="paypal_sdk"
+/* Modal-only PayPal buttons — works on index & inventory
+   Requires cart.js to create #cartModal and #paypal-mount.
+   SDK tag must use data-namespace="paypal_sdk" and enable-funding=card,paylater.
 */
-
 (function () {
   console.log("💳 payments.js loaded");
 
-  const MODAL_ID = "cartModal";
-  const MOUNT_ID = "paypal-mount";
+  const MODAL_ID  = "cartModal";
+  const MOUNT_ID  = "paypal-mount";
 
-  let lastRenderTs = 0;
+  // Kill any old on-page mounts that conflict
+  const legacy = document.getElementById("paypal-container");
+  if (legacy) legacy.remove();
 
-  const modalOpen = () => {
-    const m = document.getElementById(MODAL_ID);
-    return !!(m && m.style.display === "flex");
-  };
-  const mount = () => document.getElementById(MOUNT_ID);
+  // Helpers
+  const modalEl   = () => document.getElementById(MODAL_ID);
+  const mountEl   = () => document.getElementById(MOUNT_ID);
+  const isOpen    = () => { const m = modalEl(); return !!(m && m.style.display === "flex"); };
+
   const getCart = () => {
     try { return JSON.parse(localStorage.getItem("cart")) || []; }
     catch { return []; }
   };
-  const getTotal = () =>
-    getCart().reduce((s, it) => s + Number(it.price) * (Number(it.qty) || 1), 0);
+  const getTotal = () => getCart().reduce((s, it) => s + Number(it.price) * (Number(it.qty) || 1), 0);
 
-  const clearMount = () => { const m = mount(); if (m) m.innerHTML = ""; };
+  // De-dupe renders
+  let lastSig = "";
+  function signature() {
+    const total = Number(getTotal().toFixed(2));
+    return `${isOpen()}:${total}:${!!window.paypal_sdk}`;
+  }
 
   function setupContainers() {
-    const m = mount();
+    const m = mountEl();
     if (!m) return null;
     m.innerHTML = `
       <div id="pp-btn-paypal"></div>
@@ -43,32 +46,26 @@
   }
 
   function renderButtons() {
-    if (!modalOpen()) return;
+    // Don’t try if modal isn’t open yet
+    if (!isOpen()) return;
 
-    // throttle a bit
-    const now = Date.now();
-    if (now - lastRenderTs < 120) return;
-    lastRenderTs = now;
+    const sig = signature();
+    if (sig === lastSig) return; // nothing changed
+    lastSig = sig;
 
     const total = Number(getTotal().toFixed(2));
     const containers = setupContainers();
     if (!containers) return;
 
+    // Wait for SDK if needed
     if (!window.paypal_sdk || !window.paypal_sdk.Buttons) {
-      // try again shortly until SDK is there
       setTimeout(renderButtons, 120);
       return;
     }
 
     if (total <= 0) {
-      clearMount();
-      const m = mount();
-      if (m) {
-        const d = document.createElement("div");
-        d.style.cssText = "text-align:center; opacity:.9; font-weight:700;";
-        d.textContent = "PayPal unavailable";
-        m.appendChild(d);
-      }
+      const m = mountEl();
+      if (m) m.innerHTML = `<div style="text-align:center;opacity:.9;font-weight:700;">PayPal unavailable</div>`;
       return;
     }
 
@@ -82,7 +79,6 @@
       }),
       onApprove: (data, actions) =>
         actions.order.capture().then(() => {
-          // clear cart and notify cart.js to refresh UI/total
           localStorage.setItem("cart", "[]");
           document.dispatchEvent(new CustomEvent("cart:update", { detail: { total: 0 } }));
           alert("Payment completed ✅");
@@ -93,48 +89,56 @@
       }
     };
 
+    // Render (PayPal + Pay Later = gold; Card must be black)
     try {
-      // PAYPAL (gold)
-      window.paypal_sdk
-        .Buttons({ ...baseCfg, style: { ...baseCfg.style, color: "gold" },
-                   fundingSource: window.paypal_sdk.FUNDING.PAYPAL })
-        .render("#pp-btn-paypal");
-    } catch (e) {
-      console.error("Failed to render PAYPAL button:", e);
-    }
+      window.paypal_sdk.Buttons({
+        ...baseCfg,
+        style: { ...baseCfg.style, color: "gold" },
+        fundingSource: window.paypal_sdk.FUNDING.PAYPAL
+      }).render("#pp-btn-paypal");
+    } catch (e) { console.error("PAYPAL button render failed:", e); }
 
     try {
-      // PAY LATER (gold)
-      window.paypal_sdk
-        .Buttons({ ...baseCfg, style: { ...baseCfg.style, color: "gold" },
-                   fundingSource: window.paypal_sdk.FUNDING.PAYLATER })
-        .render("#pp-btn-later");
+      window.paypal_sdk.Buttons({
+        ...baseCfg,
+        style: { ...baseCfg.style, color: "gold" },
+        fundingSource: window.paypal_sdk.FUNDING.PAYLATER
+      }).render("#pp-btn-later");
     } catch (e) {
-      // Some merchants/regions may not have Pay Later
-      console.warn("Pay Later not available:", e);
+      // Not always available — remove slot cleanly
       const el = document.getElementById("pp-btn-later");
       if (el) el.remove();
+      console.warn("Pay Later not available:", e);
     }
 
     try {
-      // CARD (must be black or white)
-      window.paypal_sdk
-        .Buttons({ ...baseCfg, style: { ...baseCfg.style, color: "black", label: "debit" },
-                   fundingSource: window.paypal_sdk.FUNDING.CARD })
-        .render("#pp-btn-card");
+      window.paypal_sdk.Buttons({
+        ...baseCfg,
+        style: { ...baseCfg.style, color: "black", label: "debit" },
+        fundingSource: window.paypal_sdk.FUNDING.CARD
+      }).render("#pp-btn-card");
     } catch (e) {
-      console.error("Failed to render CARD button:", e);
       const el = document.getElementById("pp-btn-card");
       if (el) el.remove();
+      console.error("CARD button render failed:", e);
     }
 
     console.log("✅ PayPal Buttons rendered");
   }
 
-  // Events from cart.js
+  // Fire on modal open + any cart change
   document.addEventListener("cart:open", renderButtons);
   document.addEventListener("cart:update", renderButtons);
 
-  // If modal is somehow open already
-  if (modalOpen()) renderButtons();
+  // Watch the modal’s display toggle (covers index page edge case)
+  const mo = new MutationObserver(() => renderButtons());
+  const attachObserver = () => { const m = modalEl(); if (m) mo.observe(m, { attributes: true, attributeFilter: ["style"] }); };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", attachObserver);
+  } else {
+    attachObserver();
+  }
+
+  // If the modal is already open (rare), try once
+  setTimeout(renderButtons, 200);
 })();
